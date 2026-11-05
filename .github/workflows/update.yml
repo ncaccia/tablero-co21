@@ -1,0 +1,32 @@
+name: Actualizar tablero CO21
+
+on:
+  schedule:
+    - cron: "10 5 * * *"   # 06:10 Madrid en invierno (05:10 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bajar datos de Square
+        env:
+          SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
+        run: python3 fetch_square.py /tmp/tickets.json /tmp/categorias.json
+      - name: Generar página
+        run: python3 build_static.py /tmp/tickets.json /tmp/categorias.json public/co21-7f3k/index.html
+      - name: Commit y push
+        run: |
+          git config user.name "tablero-bot"
+          git config user.email "tablero-bot@users.noreply.github.com"
+          git add public/co21-7f3k/index.html
+          git diff --cached --quiet && echo "Sin cambios" && exit 0
+          git commit -m "Datos actualizados $(date -u +%Y-%m-%d)"
+          git push
